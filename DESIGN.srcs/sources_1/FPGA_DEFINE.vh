@@ -46,7 +46,7 @@
 `define _product_code       8'h02
 `define _major_ver          8'h01
 `define _minor_ver          8'h01
-`define _build_id           8'h01
+`define _build_id           8'h02
 
 `define _FRAC_SYS_CLK       200
 

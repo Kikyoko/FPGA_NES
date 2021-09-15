@@ -1,12 +1,12 @@
 //////////////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2020 Kikyoko
+// Copyright (c) 2021 Kikyoko
 // https://github.com/Kikyoko
 // 
 // Module   : UART_CTL
 // Device   : Xilinx/Altera
 // Author   : Kikyoko
 // Contact  : Kikyoko@outlook.com
-// Date     : 2020/9/1 09:03:00
+// Date     : 2021/9/15 18:07:17
 // Revision : 1.00 - Simulation correct
 //
 // Description  : user uart control
@@ -40,13 +40,10 @@ module UART_CTL (
     input   [ 31:0]     reg_rdata           ,
     input               reg_rvalid          ,
     
-    //W25QXX tx/rx interface, W25QXX tx to PC
-    output              W25QXX_en           ,
-    output              W25QXX_tx_ready     ,
-    input   [  7:0]     W25QXX_tx_data      ,
-    input               W25QXX_tx_valid     ,
-    output  [  7:0]     W25QXX_rx_data      ,
-    output              W25QXX_rx_valid    
+    //load rom interface
+    output  [  7:0]     o_rom_wdata         ,
+    output  [ 15:0]     o_rom_waddr         ,
+    output              o_rom_we 
 );
 
 // =========================================================================================================================================
@@ -109,13 +106,10 @@ UART_DECODE u_UART_DECODE (
     .reg_rdata          ( reg_rdata         ),
     .reg_rvalid         ( reg_rvalid        ),
     
-    //W25QXX tx/rx interface, W25QXX tx to PC
-    .W25QXX_en          ( W25QXX_en         ),
-    .W25QXX_tx_ready    ( W25QXX_tx_ready   ),
-    .W25QXX_tx_data     ( W25QXX_tx_data    ),
-    .W25QXX_tx_valid    ( W25QXX_tx_valid   ),
-    .W25QXX_rx_data     ( W25QXX_rx_data    ),
-    .W25QXX_rx_valid    ( W25QXX_rx_valid   )
+    //load rom interface
+    .o_rom_wdata        ( o_rom_wdata       ),
+    .o_rom_waddr        ( o_rom_waddr       ),
+    .o_rom_we           ( o_rom_we          )
 );
 
 endmodule

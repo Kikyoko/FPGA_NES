@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2020 Kikyoko
+// Copyright (c) 2021 Kikyoko
 // https://github.com/Kikyoko
 //
 // Module   : FPGA_NES_TOP
@@ -54,11 +54,14 @@ logic               reg_re              ;
 logic   [ 31:0]     reg_rdata           ;
 logic               reg_rvalid          ;
 
-//use XADC read temperature
-logic   [  7:0]     s_temperature       ;
-logic               s_temp_warnning     ;
-logic               s_temp_alert        ;
-
+//ROM instance
+logic               s_rom_we            ;
+logic   [ 15:0]     s_rom_waddr         ;
+logic   [  7:0]     s_rom_wdata         ;
+logic               s_rom_re            ;
+logic   [ 15:0]     s_rom_raddr         ;
+logic   [  7:0]     s_rom_rdata         ;
+                       
 // =========================================================================================================================================
 // Logic
 // =========================================================================================================================================
@@ -91,13 +94,10 @@ UART_CTL u_UART_CTL (
     .reg_rdata          ( reg_rdata         ),
     .reg_rvalid         ( reg_rvalid        ),
     
-    //W25QXX tx/rx interface, W25QXX tx to PC
-    .W25QXX_en          (                   ),
-    .W25QXX_tx_ready    (                   ),
-    .W25QXX_tx_data     (                   ),
-    .W25QXX_tx_valid    (                   ),
-    .W25QXX_rx_data     (                   ),
-    .W25QXX_rx_valid    (                   )
+    //rom interface
+    .o_rom_wdata        ( s_rom_wdata       ),
+    .o_rom_waddr        ( s_rom_waddr       ),
+    .o_rom_we           ( s_rom_we          )
 );
               
 //System register instance
@@ -115,5 +115,18 @@ SYS_REG (
     .reg_rvalid         ( reg_rvalid        )
 );
 
+//ROM instance
+ASYNC_BRAM_8x65536_8x65536 u_ROM (
+    .clka       ( sys_clk           ),
+    .ena        ( s_rom_we          ),
+    .wea        ( 1'b1              ),
+    .addra      ( s_rom_waddr       ),
+    .dina       ( s_rom_wdata       ),
+
+    .clkb       ( nes_clk           ),
+    .enb        ( s_rom_re          ),
+    .addrb      ( s_rom_raddr       ),
+    .doutb      ( s_rom_rdata       )
+);
 
 endmodule

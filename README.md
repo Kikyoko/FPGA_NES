@@ -13,3 +13,6 @@ FPGA Nintendo Entertainment System
 # 串口通信
 使用串口工具，发送reg_rd 0，可以读出fpga版本号，注意需要设置为HEX显示。
 发送reg_wr 1 AB，可以向读写测试寄存器写入数据0xAB，然后发送reg_rd 1，可以读出读写测试寄存器中的值进行验证。
+
+# 加载rom
+通过串口发送load_rom，然后选择rom文件发送，文件发送完毕后，发送done退出。

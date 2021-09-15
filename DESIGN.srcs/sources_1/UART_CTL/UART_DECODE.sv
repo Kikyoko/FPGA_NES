@@ -1,12 +1,12 @@
 //////////////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2020 Kikyoko
+// Copyright (c) 2021 Kikyoko
 // https://github.com/Kikyoko
 // 
 // Module   : UART_DECODE
 // Device   : Xilinx/Altera
 // Author   : Kikyoko
 // Contact  : Kikyoko@outlook.com
-// Date     : 2020/9/1 09:44:42
+// Date     : 2021/9/15 18:07:10
 // Revision : 1.00 - Simulation correct
 //
 // Description  : user uart command decode
@@ -43,26 +43,23 @@ module UART_DECODE (
     input   [ 31:0]     reg_rdata           ,
     input               reg_rvalid          ,
     
-    //W25QXX tx/rx interface, W25QXX tx to PC
-    output              W25QXX_en           ,
-    output              W25QXX_tx_ready     ,
-    input   [  7:0]     W25QXX_tx_data      ,
-    input               W25QXX_tx_valid     ,
-    output  [  7:0]     W25QXX_rx_data      ,
-    output              W25QXX_rx_valid     
+    //load rom interface
+    output  [  7:0]     o_rom_wdata         ,
+    output  [ 15:0]     o_rom_waddr         ,
+    output              o_rom_we
 );
 
 //command code: command address data, address & data is Hex
-localparam  LP_REG_WRITE    = 64'h7265675F77720000  ,   //reg_wr, ddr2 test
-            LP_REG_READ     = 64'h7265675F72640000  ,   //reg_rd, ddr2 test
-            LP_FLASH        = 64'h666C617368000000  ,   //flash, Flash control operation
+localparam  LP_REG_WRITE    = 64'h7265675F77720000  ,   //reg_wr
+            LP_REG_READ     = 64'h7265675F72640000  ,   //reg_rd
+            LP_LOAD_ROM     = 64'h6C6F61645F726F6D  ,   //load_rom
             LP_DONE         = 64'h646F6E6500000000  ;   //done, Current operation done
             
 localparam  LP_SPACE        = 8'h20;  
 
 //command type
-localparam  LP_TYPE_CMD     = 2'b01 ,
-            LP_TYPE_FLASH   = 2'b10 ;  
+localparam  LP_TYPE_CMD         = 2'b01 ,
+            LP_TYPE_LOAD_ROM    = 2'b10 ;  
 
 `include "DEFINE_FUNC.vh"
 localparam  LP_100US_LEN    = `_FRAC_SYS_CLK*1000*1000/100 - 1;
@@ -94,7 +91,7 @@ logic   [  3:0]     s_hex_data      ;
 //command decode
 logic               r_cmd_reg_wr    ;
 logic               r_cmd_reg_rd    ;
-logic               r_cmd_flash     ;
+logic               r_cmd_load_rom  ;
 logic               r_cmd_done      ;
 
 //time counter generate
@@ -110,26 +107,25 @@ logic               r_reg_re        ;
 logic   [ 31:0]     r_reg_rdata     ;
 logic   [  3:0]     r_reg_rvalid    ;
 
-//W25QXX enable control
-logic               r_W25QXX_en         ;
-logic   [  7:0]     r_W25QXX_rx_data    ;
-logic               r_W25QXX_rx_valid   ;
+//rom write control
+logic   [  7:0]     r_rom_data      ;
+logic               r_rom_we        ;
+logic   [ 15:0]     r_rom_waddr     ;
 
 // =========================================================================================================================================
 // output generate
 // =========================================================================================================================================
-assign UART_tx_data     = r_W25QXX_en ? W25QXX_tx_data : r_reg_rdata[31:24];
-assign UART_tx_valid    = r_W25QXX_en ? W25QXX_tx_valid : |r_reg_rvalid;
+assign UART_tx_data     = r_reg_rdata[31:24];
+assign UART_tx_valid    = |r_reg_rvalid;
 
 assign reg_addr     = r_reg_addr    ; 
 assign reg_wdata    = r_reg_wdata   ;
 assign reg_we       = r_reg_we      ;
-assign reg_re       = r_reg_re      ; 
+assign reg_re       = r_reg_re      ;
 
-assign W25QXX_en        = r_W25QXX_en;
-assign W25QXX_tx_ready  = UART_tx_ready;
-assign W25QXX_rx_data   = r_W25QXX_rx_data;
-assign W25QXX_rx_valid  = r_W25QXX_rx_valid;
+assign o_rom_wdata  = r_rom_data    ;
+assign o_rom_waddr  = r_rom_waddr   ;
+assign o_rom_we     = r_rom_we      ;
 
 // =========================================================================================================================================
 // Logic
@@ -151,8 +147,8 @@ always @ (posedge clk) begin
         end else begin
             case (r_cmd_type)
                 LP_TYPE_CMD     : begin
-                    if (r_time_out & r_cmd_flash) begin
-                        r_cmd_type  <= LP_TYPE_FLASH;
+                    if (r_time_out & r_cmd_load_rom) begin
+                        r_cmd_type  <= LP_TYPE_LOAD_ROM;
                     end
                 end
                 default         : ;
@@ -247,10 +243,10 @@ always @ (posedge clk) begin
     end
     
     //Flash operation
-    if (r_cmd_tmp == LP_FLASH) begin
-        r_cmd_flash <= 1'b1;
+    if (r_cmd_tmp == LP_LOAD_ROM) begin
+        r_cmd_load_rom  <= 1'b1;
     end else begin
-        r_cmd_flash <= 1'b0;
+        r_cmd_load_rom  <= 1'b0;
     end
     
     //operation done
@@ -300,20 +296,25 @@ always @ (posedge clk) begin
     end
 end
 
-//W25QXX enable control
+//rom write control
 always @ (posedge clk) begin
     if (rst) begin
-        r_W25QXX_en         <= 1'b0;
-        r_W25QXX_rx_data    <= 8'd0;
-        r_W25QXX_rx_valid   <= 1'b0;
+        r_rom_data  <= 8'd0;
+        r_rom_we    <= 1'b0;
+        r_rom_waddr <= 16'd0;
     end else begin
-        r_W25QXX_en <= (r_cmd_type == LP_TYPE_FLASH);
-        if (r_W25QXX_en) begin
-            r_W25QXX_rx_data    <= r_uart_rx_data;
-            r_W25QXX_rx_valid   <= r_uart_rx_valid;
+        if (r_cmd_type == LP_TYPE_LOAD_ROM) begin
+            r_rom_data  <= r_uart_rx_data;
+            r_rom_we    <= r_uart_rx_valid;
         end else begin
-            r_W25QXX_rx_data    <= 8'd0;
-            r_W25QXX_rx_valid   <= 1'b0;
+            r_rom_data  <= 'd0;
+            r_rom_we    <= 'd0;
+        end
+        
+        if (r_time_out & r_cmd_load_rom) begin
+            r_rom_waddr <= 'd0;
+        end else if (r_rom_we) begin
+            r_rom_waddr <= r_rom_waddr + 1'b1;
         end
     end
 end

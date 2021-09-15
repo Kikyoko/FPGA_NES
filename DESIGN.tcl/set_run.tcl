@@ -20,6 +20,7 @@ add_files -quiet ./DESIGN.srcs/sources_1/USER_IP/Interface/UART/UART_TX.sv
 
 # add IP file
 add_files -quiet ./DESIGN.srcs/sources_1/ip/MMCM_SYS_CLK/MMCM_SYS_CLK.xci
+add_files -quiet ./DESIGN.srcs/sources_1/ip/ASYNC_BRAM_8x65536_8x65536/ASYNC_BRAM_8x65536_8x65536.xci
 add_files -quiet ./DESIGN.srcs/sources_1/ip/SYNC_DRAM_6x32_6x32/SYNC_DRAM_6x32_6x32.xci
 
 # add constrs
